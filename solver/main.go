@@ -58,54 +58,109 @@ func (prod *Production) is_available(stock string, quantity int) bool {
 	return false
 }
 
-func (prod *Production) hwo_produce(stock string) []Processe {
-	var result []Processe
-	for _, v := range prod.processes {
-		for _, k := range v.results {
-			if k.name == stock && k.quantity > 0 {
-				result = append(result, v)
+func (prod *Production) rm_stocks(needs []Stock) {
+	for i := 0; i < len(prod.stocks); i++ {
+		for j := 0; j < len(needs); j++ {
+			if prod.stocks[i].name == needs[j].name {
+				prod.stocks[i].quantity = prod.stocks[i].quantity - needs[j].quantity
 			}
 		}
 	}
-	return result
 }
 
-// func (prod Production) processe_to_do(Stock string) bool {
-// 	if Stock != prod.to_optimize.stock_name {
-// 		if !prod.is_available(Stock, 1) && !prod.processe_to_do(Stock) {
-// 			return false
-// 		}
-// 	}
-// 	for _,v := range prod.processes {
-// 		for _,k := range v.results{
-// 			if k.name
-// 		}
-// 	}
-// 	return true
-// }
-
-func (prod *Production) optimize_by_Time() {
+func (prod *Production) add_stocks(needs []Stock) {
+	for i := 0; i < len(prod.stocks); i++ {
+		for j := 0; j < len(needs); j++ {
+			if prod.stocks[i].name == needs[j].name {
+				prod.stocks[i].quantity = prod.stocks[i].quantity + needs[j].quantity
+			}
+		}
+	}
 }
 
-func (prod *Production) optimize_by_Stock() {
+// remove task from Process progress
+func (prod *Production) remove_task(index int) {
+	var new []Processe_Progress
+	for i, v := range prod.Processe_in_Progress {
+		if i != index {
+			new = append(new, v)
+		}
+	}
+	prod.Processe_in_Progress = new
 }
 
+func (prod *Production) finish_task() {
+	// look for task that should end at current cycle
+	for i := 0; i < len(prod.Processe_in_Progress); i++ {
+		if prod.Processe_in_Progress[i].End_cycle == prod.current_cycle {
+			prod.add_stocks(prod.Processe_in_Progress[i].results)
+			prod.remove_task(i)
+			i = i - 1
+		}
+	}
+}
+
+// look for possible task to doo ordered by importance
+func (prod *Production) Possible_task() []Processe {
+	var possible_task []Processe
+	for _, v := range prod.processes {
+		possible := true
+		for _, k := range v.needs {
+			if !prod.is_available(k.name, k.quantity) {
+				possible = false
+				break
+			}
+		}
+		if possible {
+			possible_task = append(possible_task, v)
+		}
+	}
+	for i, v := range possible_task {
+		for _, k := range v.results {
+			if k.name == prod.to_optimize.stock_name {
+				temp := possible_task[i]
+				possible_task[0] = possible_task[i]
+				possible_task[i] = temp
+			}
+		}
+	}
+
+	// TO DO
+	// sort possible fo optomize
+
+	fmt.Println(possible_task)
+	return possible_task
+}
+
+func (prod *Production) Do_task(a Processe) {
+	prod.rm_stocks(a.needs)
+	task_in_progress := Processe_Progress{name: a.name, needs: a.needs, results: a.results, Start_cycle: prod.current_cycle, End_cycle: prod.current_cycle + a.cycle}
+	prod.Processe_in_Progress = append(prod.Processe_in_Progress, task_in_progress)
+	fmt.Println(prod.current_cycle, ":", a.name)
+}
+
+// function to do all process possible in each cycle
 func (prod *Production) resolve() {
-	// if !prod.processe_to_do(prod.to_optimize.stock_name) {
-	// 	fmt.Println("Error : No process possible")
-	// 	os.Exit(0)
-	// }
-	if prod.to_optimize.Type == Time_optimize {
-		prod.optimize_by_Time()
-	} else {
-		prod.optimize_by_Stock()
+	// end process in progression
+	prod.finish_task()
+
+	// look for possible task to doo ordered by importance
+	Possible := prod.Possible_task()
+	if len(Possible) == 0 && len(prod.Processe_in_Progress) == 0 {
+		fmt.Println("No more stock")
+		prod.stop_prod()
+	}
+	// doo task while possible length >0
+	for len(Possible) > 0 {
+		prod.Do_task(Possible[0])
+		Possible = prod.Possible_task()
 	}
 }
 
 func GetData(file string) Production {
 	reg, _ := regexp.Compile(`^[\w\s]+:\((\w+:\d+;)*\w+:\d+\):\((\w+:\d+;)*\w+:\d+\):\d+$`)
 	var a Production
-	body, err := ioutil.ReadFile("../" + file)
+	body, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Fatalf("unable to read file: %v", err)
 	}
@@ -217,12 +272,12 @@ func main() {
 	Chaine := &Production{}
 	time.AfterFunc(time.Duration(timer*float64(time.Second)), Chaine.stop_prod)
 	*Chaine = GetData(os.Args[1])
-	fmt.Println(*Chaine)
 	if len(Chaine.processes) == 0 {
 		fmt.Println("Missing processes")
 		os.Exit(0)
 	}
 	for {
 		Chaine.resolve()
+		Chaine.current_cycle++
 	}
 }
