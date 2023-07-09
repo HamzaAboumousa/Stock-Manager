@@ -115,20 +115,7 @@ func (prod *Production) Possible_task() []Processe {
 			possible_task = append(possible_task, v)
 		}
 	}
-	for i, v := range possible_task {
-		for _, k := range v.results {
-			if k.name == prod.to_optimize.stock_name {
-				temp := possible_task[i]
-				possible_task[0] = possible_task[i]
-				possible_task[i] = temp
-			}
-		}
-	}
 
-	// TO DO
-	// sort possible fo optomize
-
-	fmt.Println(possible_task)
 	return possible_task
 }
 
@@ -137,6 +124,42 @@ func (prod *Production) Do_task(a Processe) {
 	task_in_progress := Processe_Progress{name: a.name, needs: a.needs, results: a.results, Start_cycle: prod.current_cycle, End_cycle: prod.current_cycle + a.cycle}
 	prod.Processe_in_Progress = append(prod.Processe_in_Progress, task_in_progress)
 	fmt.Println(prod.current_cycle, ":", a.name)
+}
+
+func Exist(a []string, b string) bool {
+	for _, v := range a {
+		if v == b {
+			return true
+		}
+	}
+	return false
+}
+
+func (prod *Production) produce(stock string, quantity int, tested_process []string) (tested []string) {
+	for _, v := range prod.processes {
+		for _, j := range v.results {
+			if j.name == stock {
+				if Exist(tested_process, v.name) {
+					continue
+				}
+				tested_process = append(tested_process, v.name)
+				canproduce := true
+				for _, x := range v.needs {
+					if !prod.is_available(x.name, x.quantity) {
+						canproduce = false
+						prod.produce(x.name, x.quantity, tested_process)
+
+					}
+				}
+				if canproduce {
+					for i := 0; i < quantity/j.quantity; i++ {
+						prod.Do_task(v)
+					}
+				}
+			}
+		}
+	}
+	return tested
 }
 
 // function to do all process possible in each cycle
@@ -149,12 +172,13 @@ func (prod *Production) resolve() {
 	if len(Possible) == 0 && len(prod.Processe_in_Progress) == 0 {
 		fmt.Println("No more stock")
 		prod.stop_prod()
+	} else {
+		for len(Possible) > 0 {
+			prod.produce(prod.to_optimize.stock_name, 1, []string{})
+			Possible = prod.Possible_task()
+		}
 	}
 	// doo task while possible length >0
-	for len(Possible) > 0 {
-		prod.Do_task(Possible[0])
-		Possible = prod.Possible_task()
-	}
 }
 
 func GetData(file string) Production {
@@ -251,7 +275,7 @@ func GetData(file string) Production {
 }
 
 func (prod *Production) stop_prod() {
-	fmt.Println("No more process doable at cycle : " + strconv.Itoa(prod.current_cycle))
+	fmt.Println("No more process doable at cycle : " + strconv.Itoa(prod.current_cycle+1))
 	fmt.Println("Stocks :")
 	for _, v := range prod.stocks {
 		fmt.Println(" " + v.name + " => " + strconv.Itoa(v.quantity))
