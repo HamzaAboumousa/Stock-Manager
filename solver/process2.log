@@ -1,0 +1,22 @@
+Main process:
+0 : make_mur
+0 : make_mur
+0 : make_mur
+0 : make_mur
+0 : make_mur
+0 : make_mur
+0 : make_mur
+0 : make_mur
+30 : make_maison
+30 : make_maison
+No more stock
+No more process doable at cycle : 81
+Stocks :
+ porte => 32
+ fenetre => 43
+ toit => 32
+ brique => 0
+ verre => 45
+ bois => 34
+ mur => 0
+ maison => 2

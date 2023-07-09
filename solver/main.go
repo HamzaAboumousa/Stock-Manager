@@ -13,6 +13,7 @@ import (
 
 type Production struct {
 	Timeout              bool
+	File_name            string
 	stocks               []Stock
 	processes            []Processe
 	to_optimize          Optimize
@@ -125,6 +126,7 @@ func (prod *Production) Do_task(a Processe) {
 	task_in_progress := Processe_Progress{name: a.name, needs: a.needs, results: a.results, Start_cycle: prod.current_cycle, End_cycle: prod.current_cycle + a.cycle}
 	prod.Processe_in_Progress = append(prod.Processe_in_Progress, task_in_progress)
 	fmt.Println(prod.current_cycle, ":", a.name)
+	write_log_file(prod.File_name, strconv.Itoa(prod.current_cycle)+" : "+a.name+"\n")
 }
 
 func Exist(a []string, b string) bool {
@@ -190,6 +192,7 @@ func (prod *Production) resolve() {
 	Possible := prod.Possible_task()
 	if len(Possible) == 0 && len(prod.Processe_in_Progress) == 0 {
 		fmt.Println("No more stock")
+		write_log_file(prod.File_name, "No more stock\n")
 		prod.stop_prod()
 	} else {
 		for len(Possible) > 0 {
@@ -296,12 +299,27 @@ func GetData(file string) Production {
 	return a
 }
 
+func write_log_file(file string, text string) {
+	f, err := os.OpenFile(file,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		log.Println(err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(text); err != nil {
+		log.Println(err)
+	}
+}
+
 func (prod *Production) stop_prod() {
 	prod.Timeout = true
 	fmt.Println("No more process doable at cycle : " + strconv.Itoa(prod.current_cycle+1))
+	write_log_file(prod.File_name, "No more process doable at cycle : "+strconv.Itoa(prod.current_cycle+1)+"\n")
 	fmt.Println("Stocks :")
+	write_log_file(prod.File_name, "Stocks :\n")
 	for _, v := range prod.stocks {
 		fmt.Println(" " + v.name + " => " + strconv.Itoa(v.quantity))
+		write_log_file(prod.File_name, " "+v.name+" => "+strconv.Itoa(v.quantity)+"\n")
 	}
 	os.Exit(0)
 }
@@ -319,11 +337,16 @@ func main() {
 	Chaine := &Production{}
 	time.AfterFunc(time.Duration(timer*float64(time.Second)), Chaine.stop_prod)
 	*Chaine = GetData(os.Args[1])
+	Chaine.File_name = strings.Split(strings.Split(os.Args[1], "/")[len(strings.Split(os.Args[1], "/"))-1], ".")[0] + ".log"
+	file, err := os.OpenFile(Chaine.File_name, os.O_CREATE|os.O_WRONLY, os.ModePerm)
+	file.Truncate(0)
+	file.Close()
 	if len(Chaine.processes) == 0 {
 		fmt.Println("Missing processes")
 		os.Exit(0)
 	}
 	fmt.Println("Main process:")
+	write_log_file(Chaine.File_name, "Main process:\n")
 	for {
 		if Chaine.Timeout {
 			break
@@ -332,8 +355,11 @@ func main() {
 		Chaine.current_cycle++
 	}
 	fmt.Println("No more process doable at cycle : " + strconv.Itoa(Chaine.current_cycle+1))
+	write_log_file(Chaine.File_name, "No more process doable at cycle : "+strconv.Itoa(Chaine.current_cycle+1)+"\n")
 	fmt.Println("Stocks :")
+	write_log_file(Chaine.File_name, "Stocks :\n")
 	for _, v := range Chaine.stocks {
 		fmt.Println(" " + v.name + " => " + strconv.Itoa(v.quantity))
+		write_log_file(Chaine.File_name, " "+v.name+" => "+strconv.Itoa(v.quantity)+"\n")
 	}
 }

@@ -4,10 +4,9 @@
 # <stock_name>:<quantity>
 #
 porte:34
-mur:3
 fenetre:45
 toit:34
-brique:1234
+brique:800
 verre:45
 bois:34
 #
@@ -16,8 +15,6 @@ bois:34
 # processe description
 # <name>:(<need>:<quantity>;<need>:<quantity>):(<result>:<quantity>;<result>:<quantity>):<nb_cycle>
 #
-make_porte:(bois:2):(porte:1):4
-make_fenetre:(bois:3;verre:5):(fenetre:2):3
 make_mur:(brique:100):(mur:1):30
 make_maison:(mur:4;toit:1;porte:1;fenetre:1):(maison:1):50
 #
