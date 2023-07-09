@@ -12,6 +12,7 @@ import (
 )
 
 type Production struct {
+	Timeout              bool
 	stocks               []Stock
 	processes            []Processe
 	to_optimize          Optimize
@@ -296,6 +297,7 @@ func GetData(file string) Production {
 }
 
 func (prod *Production) stop_prod() {
+	prod.Timeout = true
 	fmt.Println("No more process doable at cycle : " + strconv.Itoa(prod.current_cycle+1))
 	fmt.Println("Stocks :")
 	for _, v := range prod.stocks {
@@ -321,8 +323,17 @@ func main() {
 		fmt.Println("Missing processes")
 		os.Exit(0)
 	}
+	fmt.Println("Main process:")
 	for {
+		if Chaine.Timeout {
+			break
+		}
 		Chaine.resolve()
 		Chaine.current_cycle++
+	}
+	fmt.Println("No more process doable at cycle : " + strconv.Itoa(Chaine.current_cycle+1))
+	fmt.Println("Stocks :")
+	for _, v := range Chaine.stocks {
+		fmt.Println(" " + v.name + " => " + strconv.Itoa(v.quantity))
 	}
 }
