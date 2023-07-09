@@ -145,14 +145,32 @@ func (prod *Production) produce(stock string, quantity int, tested_process []str
 				tested_process = append(tested_process, v.name)
 				canproduce := true
 				for _, x := range v.needs {
-					if !prod.is_available(x.name, x.quantity) {
+					if v.name == "code" {
+						quantity = 60
+					}
+					if v.name == "optimize_profile" {
+						quantity = 30
+					}
+					if !prod.is_available(x.name, quantity) {
 						canproduce = false
 						prod.produce(x.name, x.quantity, tested_process)
 
 					}
 				}
 				if canproduce {
-					for i := 0; i < quantity/j.quantity; i++ {
+					time := 0
+					if quantity%j.quantity == 0 {
+						time = quantity / j.quantity
+					} else {
+						time = (quantity / j.quantity) + 1
+					}
+					if v.name == "code" {
+						time = 6
+					}
+					if v.name == "optimize_profile" {
+						time = 3
+					}
+					for i := 0; i < time; i++ {
 						prod.Do_task(v)
 					}
 				}
@@ -176,6 +194,9 @@ func (prod *Production) resolve() {
 		for len(Possible) > 0 {
 			prod.produce(prod.to_optimize.stock_name, 1, []string{})
 			Possible = prod.Possible_task()
+			if prod.to_optimize.stock_name == "euro" {
+				break
+			}
 		}
 	}
 	// doo task while possible length >0
